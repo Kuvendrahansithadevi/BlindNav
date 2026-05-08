@@ -46,8 +46,8 @@ android {
         }
     }
 
-    aaptOptions {
-        noCompress("tflite")
+    androidResources {
+        noCompress += "tflite"
     }
 }
 
@@ -60,11 +60,9 @@ dependencies {
     implementation(libs.androidx.compose.material3)
 
     // --- TENSORFLOW LITE ---
-    implementation(libs.tensorflow.lite.task.vision)
+    implementation(libs.tensorflow.lite)
+    implementation("org.tensorflow:tensorflow-lite-support-api:0.4.4")
     implementation(libs.tensorflow.lite.gpu)
-    implementation(libs.tensorflow.lite.support) {
-        exclude(group = "org.tensorflow", module = "tensorflow-lite-support-api")
-    }
 
     // CameraX
     implementation(libs.androidx.camera.camera2)
