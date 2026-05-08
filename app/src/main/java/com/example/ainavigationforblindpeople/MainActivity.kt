@@ -1,9 +1,14 @@
 package com.example.ainavigationforblindpeople
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Paint
 import android.graphics.RectF
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.util.Log
@@ -37,7 +42,7 @@ import java.util.concurrent.Executors
 
 data class DetectionResult(val label: String, val score: Float, val box: RectF)
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), SensorEventListener {
     private var interpreter: Interpreter? = null
     private var labels = listOf<String>()
     private var tts: TextToSpeech? = null
@@ -45,10 +50,15 @@ class MainActivity : ComponentActivity() {
     private var lastSpokenTime = 0L
     private val speechInterval = 3000L
 
+    private lateinit var sensorManager: SensorManager
+    private var lightSensor: Sensor? = null
+    private var isEnvironmentDark by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setupInterpreter()
         setupTTS()
+        setupLightSensor()
         setContent {
             var hasPermission by remember {
                 mutableStateOf(ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
@@ -60,10 +70,37 @@ class MainActivity : ComponentActivity() {
             }
 
             if (hasPermission) {
-                ObjectDetectionScreen(detectionsState) { imageProxy -> detectObjects(imageProxy) }
+                ObjectDetectionScreen(detectionsState, isEnvironmentDark) { imageProxy -> detectObjects(imageProxy) }
             }
         }
     }
+
+    private fun setupLightSensor() {
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+        lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        lightSensor?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sensorManager.unregisterListener(this)
+    }
+
+    override fun onSensorChanged(event: SensorEvent?) {
+        if (event?.sensor?.type == Sensor.TYPE_LIGHT) {
+            val lux = event.values[0]
+            // Threshold for dark environment: < 15 lux is considered dark
+            isEnvironmentDark = lux < 15f
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     private fun setupInterpreter() {
         try {
@@ -160,7 +197,9 @@ class MainActivity : ComponentActivity() {
         "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair",
         "couch", "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse",
         "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator",
-        "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
+        "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush",
+        // Indian Currency labels (Requires a specialized model)
+        "10 Rupee", "20 Rupee", "50 Rupee", "100 Rupee", "200 Rupee", "500 Rupee"
     )
 
     private fun setupTTS() {
@@ -217,9 +256,19 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun ObjectDetectionScreen(detections: List<DetectionResult>, onAnalyze: (ImageProxy) -> Unit) {
+fun ObjectDetectionScreen(
+    detections: List<DetectionResult>,
+    isDark: Boolean,
+    onAnalyze: (ImageProxy) -> Unit
+) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val executor = remember { Executors.newSingleThreadExecutor() }
+    var camera by remember { mutableStateOf<Camera?>(null) }
+
+    // Toggle torch based on ambient light
+    LaunchedEffect(isDark) {
+        camera?.cameraControl?.enableTorch(isDark)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
@@ -240,7 +289,7 @@ fun ObjectDetectionScreen(detections: List<DetectionResult>, onAnalyze: (ImagePr
                                 it.setAnalyzer(executor) { proxy -> onAnalyze(proxy) }
                             }
                         provider.unbindAll()
-                        provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
+                        camera = provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
                     }, ContextCompat.getMainExecutor(ctx))
                 }
             }
