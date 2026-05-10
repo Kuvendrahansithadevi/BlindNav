@@ -2,7 +2,7 @@
 # Mee stable Gradle Plugin version
 agp = "8.5.0"
 # Meeru vaaduthunna stable Kotlin version
-kotlin = "2.0.21"
+kotlin = "1.9.24"
 coreKtx = "1.13.1"
 junit = "4.13.2"
 junitVersion = "1.1.5"

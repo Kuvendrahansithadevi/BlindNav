@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -17,7 +16,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Team's NDK setting for TFLite stability across devices
+        // Team's NDK setting for TFLite stability
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
         }
@@ -42,8 +41,22 @@ android {
         jvmTarget = "11"
     }
 
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+
+
+
     buildFeatures {
         compose = true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.14"
     }
 
     packaging {
@@ -52,7 +65,7 @@ android {
         }
     }
 
-    // CRITICAL: TFLite model files compress avvakunda chustundi
+    // CRITICAL: TFLite model files ni Android compress cheyakunda chustundi
     androidResources {
         noCompress += "tflite"
     }
@@ -65,27 +78,22 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
 
-    // Compose UI & Material 3
+    // Compose UI (Merged)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    // Icon pack added from teammate's code
-    implementation("androidx.compose.material:material-icons-extended:1.6.0")
 
-    // --- SOS FEATURE: Google Play Services Location ---
-    implementation("com.google.android.gms:play-services-location:21.2.0")
-
-    // --- TRANSLATION FEATURE: ML Kit Translation ---
+    // --- YOUR WORK: ML Kit Translation ---
     implementation(libs.mlkit.translate)
 
-    // --- DETECTION FEATURE: TENSORFLOW LITE ---
+    // --- TEAM WORK: TENSORFLOW LITE ---
     implementation(libs.tensorflow.lite)
-    implementation(libs.tensorflow.lite.support)
+    implementation(libs.tensorflow.lite.support) // Using catalog reference
     implementation(libs.tensorflow.lite.gpu)
 
-    // --- CAMERA FEATURE: CameraX ---
+    // --- TEAM WORK: CameraX ---
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
