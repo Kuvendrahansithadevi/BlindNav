@@ -23,7 +23,6 @@ import android.speech.tts.TextToSpeech
 import android.telephony.SmsManager
 import android.util.Log
 import android.view.KeyEvent
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -71,7 +70,9 @@ enum class AppMode { OBJECT_DETECTION, CURRENCY_DETECTION }
 
 class MainActivity : ComponentActivity(), SensorEventListener {
     private var interpreter: Interpreter? = null
+    private var currencyInterpreter: Interpreter? = null
     private var labels = listOf<String>()
+    private var currencyLabels = listOf<String>()
     private var tts: TextToSpeech? = null
     private var detectionsState by mutableStateOf<List<DetectionResult>>(emptyList())
     private var lastSpokenTime = 0L
@@ -102,11 +103,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
     private val vibrator by lazy {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            val vibratorManager = getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager
             vibratorManager.defaultVibrator
         } else {
             @Suppress("DEPRECATION")
-            getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            getSystemService(VIBRATOR_SERVICE) as Vibrator
         }
     }
 
@@ -200,7 +201,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         }
         try {
             val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) getSystemService(SmsManager::class.java)
-            else SmsManager.getDefault()
+            else @Suppress("DEPRECATION") SmsManager.getDefault()
             smsManager.sendTextMessage(number, null, "SOS Alert! Location: $message", null, null)
             speakFeedback("Emergency location shared")
         } catch (e: Exception) { Log.e("BlindNav", "SMS Error: ${e.message}") }
@@ -212,47 +213,27 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
     // --- VOICE & DETECTION LOGIC ---
     private fun setupSpeechRecognizer() {
-
         if (!SpeechRecognizer.isRecognitionAvailable(this)) return
-
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
-
         speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.US.toString())
-
         }
 
         speechRecognizer?.setRecognitionListener(object : RecognitionListener {
-
             override fun onReadyForSpeech(params: Bundle?) { isListening = true }
-
             override fun onEndOfSpeech() { isListening = false }
-
             override fun onError(error: Int) { isListening = false; speechRecognizer?.startListening(speechIntent) }
-
             override fun onResults(results: Bundle?) {
-
                 results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.get(0)?.let { handleVoiceCommand(it.lowercase()) }
-
                 speechRecognizer?.startListening(speechIntent)
-
             }
-
             override fun onBeginningOfSpeech() {}
-
             override fun onRmsChanged(rmsdB: Float) {}
-
             override fun onBufferReceived(buffer: ByteArray?) {}
-
             override fun onPartialResults(partialResults: Bundle?) {}
-
             override fun onEvent(eventType: Int, params: Bundle?) {}
-
         })
-
     }
 
     private fun handleVoiceCommand(command: String) {
@@ -274,32 +255,18 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 speakFeedback("Stopping Detection")
                 detectionsState = emptyList()
             }
-
-            // --- Languages Section ---
-            command.contains("telugu") -> {
-                changeLanguage("Telugu", TranslateLanguage.TELUGU)
-            }
-            command.contains("english") -> {
-                changeLanguage("English", TranslateLanguage.ENGLISH)
-            }
-            command.contains("hindi") -> {
-                changeLanguage("Hindi", TranslateLanguage.HINDI)
-            }
-            command.contains("tamil") -> {
-                changeLanguage("Tamil", TranslateLanguage.TAMIL)
-            }
-            command.contains("kannada") -> {
-                changeLanguage("Kannada", TranslateLanguage.KANNADA)
-            }
+            command.contains("telugu") -> changeLanguage("Telugu", TranslateLanguage.TELUGU)
+            command.contains("english") -> changeLanguage("English", TranslateLanguage.ENGLISH)
+            command.contains("hindi") -> changeLanguage("Hindi", TranslateLanguage.HINDI)
+            command.contains("tamil") -> changeLanguage("Tamil", TranslateLanguage.TAMIL)
+            command.contains("kannada") -> changeLanguage("Kannada", TranslateLanguage.KANNADA)
         }
     }
 
-    // Code clean ga undadaniki ee helper function vaadandi
     private fun changeLanguage(name: String, code: String) {
         selectedLangName = name
         selectedLangCode = code
         speakFeedback("Language changed to $name")
-        // Offline models download ayyeలా chustundi
         ensureModelDownloaded(code)
     }
 
@@ -307,7 +274,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
     private fun triggerVibration(duration: Long) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
-        else vibrator.vibrate(duration)
+        else @Suppress("DEPRECATION") vibrator.vibrate(duration)
     }
 
     private fun ensureModelDownloaded(langCode: String) {
@@ -341,38 +308,63 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         if (!isDetectionActive) { imageProxy.close(); return }
         try {
             val bitmap = imageProxy.toBitmap() ?: return
-            val imageProcessor = ImageProcessor.Builder()
-                .add(Rot90Op(-imageProxy.imageInfo.rotationDegrees / 90))
-                .add(ResizeOp(640, 640, ResizeOp.ResizeMethod.BILINEAR))
-                .add(NormalizeOp(0f, 255f)).build()
 
-            val tensorImage = TensorImage(DataType.FLOAT32).also { it.load(bitmap) }
-            val output = Array(1) { Array(84) { FloatArray(8400) } }
-            interpreter?.run(imageProcessor.process(tensorImage).buffer, output)
+            if (currentMode == AppMode.CURRENCY_DETECTION && currencyInterpreter != null) {
+                val imageProcessor = ImageProcessor.Builder()
+                    .add(Rot90Op(-imageProxy.imageInfo.rotationDegrees / 90))
+                    .add(ResizeOp(224, 224, ResizeOp.ResizeMethod.BILINEAR))
+                    .add(NormalizeOp(0f, 255f)).build()
 
-            val results = mutableListOf<DetectionResult>()
-            for (i in 0 until 8400) {
-                var maxScore = 0f; var classId = -1
-                for (c in 0 until 80) {
-                    val score = output[0][c + 4][i]
-                    if (score > maxScore) { maxScore = score; classId = c }
-                }
-                if (maxScore > 0.45f) {
-                    val cx = output[0][0][i]; val cy = output[0][1][i]; val w = output[0][2][i]; val h = output[0][3][i]
-                    results.add(DetectionResult(labels.getOrElse(classId) { "Object" }, maxScore, RectF((cx - w / 2f) / 640f, (cy - h / 2f) / 640f, (cx + w / 2f) / 640f, (cy + h / 2f) / 640f)))
-                }
-            }
-            val finalResults = applyNMS(results)
-            if (finalResults.any { it.box.height() > 0.55f }) triggerVibration(200)
+                val tensorImage = TensorImage(DataType.FLOAT32).also { it.load(bitmap) }
+                val outputBuffer = Array(1) { FloatArray(currencyLabels.size) }
+                currencyInterpreter?.run(imageProcessor.process(tensorImage).buffer, outputBuffer)
 
-            runOnUiThread {
-                detectionsState = when (currentMode) {
-                    AppMode.CURRENCY_DETECTION -> finalResults.filter { it.label.contains("Rupee") }
-                    AppMode.OBJECT_DETECTION -> finalResults.filter { !it.label.contains("Rupee") }
+                val scores = outputBuffer[0]
+                val maxScoreIndex = scores.indices.maxByOrNull { scores[it] } ?: -1
+                val maxScore = if (maxScoreIndex != -1) scores[maxScoreIndex] else 0f
+
+                if (maxScore > 0.75f) {
+                    val label = currencyLabels.getOrElse(maxScoreIndex) { "Currency" }
+                    val result = DetectionResult(label, maxScore, RectF(0.1f, 0.1f, 0.9f, 0.9f))
+                    runOnUiThread {
+                        detectionsState = listOf(result)
+                        if (System.currentTimeMillis() - lastSpokenTime > speechInterval) {
+                            translateAndSpeak(label)
+                            lastSpokenTime = System.currentTimeMillis()
+                        }
+                    }
                 }
-                if (detectionsState.isNotEmpty() && (System.currentTimeMillis() - lastSpokenTime > speechInterval)) {
-                    translateAndSpeak(detectionsState.maxBy { it.score }.label)
-                    lastSpokenTime = System.currentTimeMillis()
+            } else if (interpreter != null) {
+                val imageProcessor = ImageProcessor.Builder()
+                    .add(Rot90Op(-imageProxy.imageInfo.rotationDegrees / 90))
+                    .add(ResizeOp(640, 640, ResizeOp.ResizeMethod.BILINEAR))
+                    .add(NormalizeOp(0f, 255f)).build()
+
+                val tensorImage = TensorImage(DataType.FLOAT32).also { it.load(bitmap) }
+                val output = Array(1) { Array(84) { FloatArray(8400) } }
+                interpreter?.run(imageProcessor.process(tensorImage).buffer, output)
+
+                val results = mutableListOf<DetectionResult>()
+                for (i in 0 until 8400) {
+                    var maxScore = 0f; var classId = -1
+                    for (c in 0 until 80) {
+                        val score = output[0][c + 4][i]
+                        if (score > maxScore) { maxScore = score; classId = c }
+                    }
+                    if (maxScore > 0.45f) {
+                        val cx = output[0][0][i]; val cy = output[0][1][i]; val w = output[0][2][i]; val h = output[0][3][i]
+                        results.add(DetectionResult(labels.getOrElse(classId) { "Object" }, maxScore, RectF((cx - w / 2f) / 640f, (cy - h / 2f) / 640f, (cx + w / 2f) / 640f, (cy + h / 2f) / 640f)))
+                    }
+                }
+                val finalResults = applyNMS(results)
+                if (finalResults.any { it.box.height() > 0.55f }) triggerVibration(200)
+
+                runOnUiThread {
+                    detectionsState = finalResults.filter { !it.label.contains("Rupee") }
+                    if (detectionsState.isNotEmpty() && (System.currentTimeMillis() - lastSpokenTime > speechInterval)) {
+                        translateAndSpeak(detectionsState.maxBy { it.score }.label)
+                        lastSpokenTime = System.currentTimeMillis()
+                    }
                 }
             }
         } catch (e: Exception) { Log.e("BlindNav", "Error: ${e.message}") } finally { imageProxy.close() }
@@ -384,6 +376,12 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             val model = FileUtil.loadMappedFile(this, "yolo11n_int8.tflite")
             interpreter = Interpreter(model, Interpreter.Options().setNumThreads(4))
             labels = loadLabels()
+
+            try {
+                val currencyModel = FileUtil.loadMappedFile(this, "model_unquant.tflite")
+                currencyInterpreter = Interpreter(currencyModel, Interpreter.Options().setNumThreads(2))
+                currencyLabels = FileUtil.loadLabels(this, "labels.txt").map { it.split(" ", limit = 2).last() }
+            } catch (e: Exception) { Log.e("BlindNav", "Currency Model Load Fail: ${e.message}") }
         } catch (e: Exception) { Log.e("BlindNav", "Model Load Fail") }
     }
 
@@ -394,7 +392,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     override fun onSensorChanged(event: SensorEvent?) { if (event?.sensor?.type == Sensor.TYPE_LIGHT) isEnvironmentDark = event.values[0] < 15f }
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
-    private fun loadLabels() = listOf("person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch", "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush", "10 Rupee", "20 Rupee", "50 Rupee", "100 Rupee", "200 Rupee", "500 Rupee")
+    private fun loadLabels(): List<String> = listOf("person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch", "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush")
 
     private fun applyNMS(results: List<DetectionResult>): List<DetectionResult> {
         val sorted = results.sortedByDescending { it.score }; val selected = mutableListOf<DetectionResult>()
@@ -410,7 +408,14 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         return if (uArea > 0) intArea / uArea else 0f
     }
 
-    override fun onDestroy() { super.onDestroy(); tts?.shutdown(); interpreter?.close(); speechRecognizer?.destroy(); translator?.close() }
+    override fun onDestroy() {
+        super.onDestroy()
+        tts?.shutdown()
+        interpreter?.close()
+        currencyInterpreter?.close()
+        speechRecognizer?.destroy()
+        translator?.close()
+    }
 }
 
 // --- UI COMPONENTS ---
@@ -449,17 +454,15 @@ fun ObjectDetectionScreen(detections: List<DetectionResult>, isDark: Boolean, on
         if (showSettings) {
             MergedSettingsDialog(
                 currentNumber = context.getSavedGuardianNumber(),
-                currentLang = context.getSavedGuardianNumber(), // Logic used to trigger dialog
                 onDismiss = { showSettings = false },
-                onSaveNumber = { context.saveGuardianNumber(it) },
-                onLangChange = { /* Handled via voice or manual logic if needed */ }
+                onSaveNumber = { context.saveGuardianNumber(it) }
             )
         }
     }
 }
 
 @Composable
-fun MergedSettingsDialog(currentNumber: String, currentLang: String, onDismiss: () -> Unit, onSaveNumber: (String) -> Unit, onLangChange: (String) -> Unit) {
+fun MergedSettingsDialog(currentNumber: String, onDismiss: () -> Unit, onSaveNumber: (String) -> Unit) {
     var numberText by remember { mutableStateOf(currentNumber) }
     AlertDialog(
         onDismissRequest = onDismiss,
