@@ -4,6 +4,7 @@
     <option name="approvalStates">
       <map>
         <entry key="20260508-102231-c6c48a96-0fea-4e3e-bbe8-cb119c63038e" value="true" />
+<<<<<<< HEAD
         <entry key="20260511-140952-e34635d9-9a0e-40e9-bd38-91bcb923ce7e" value="true" />
         <entry key="20260511-145222-ed09d38f-b059-4b4a-9597-255ed69377af" value="true" />
         <entry key="20260511-150416-35d24a35-0981-4900-9fa9-72c7ca6b95f4" value="true" />
@@ -17,6 +18,9 @@
         <entry key="20260511-205932-29d828d6-6500-4687-90fa-fc4fa80913ee" value="true" />
         <entry key="20260511-213704-fc11de75-f127-41b7-ab6b-205b12023478" value="true" />
         <entry key="20260511-214835-e432fe47-a55a-44a6-9140-462aafdf2816" value="true" />
+=======
+        <entry key="20260511-142734-d6eae1bc-f40b-4772-8173-8a8f3f316ea5" value="true" />
+>>>>>>> 52666379a15342ebc8824f825ddc581df43f60b0
       </map>
     </option>
   </component>
