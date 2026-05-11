@@ -75,7 +75,9 @@ enum class AppMode { OBJECT_DETECTION, CURRENCY_DETECTION }
 
 class MainActivity : ComponentActivity(), SensorEventListener {
     private var interpreter: Interpreter? = null
+    private var currencyInterpreter: Interpreter? = null
     private var labels = listOf<String>()
+    private var currencyLabels = listOf<String>()
     private var tts: TextToSpeech? = null
     private var detectionsState by mutableStateOf<List<DetectionResult>>(emptyList())
     private var lastSpokenTime = 0L
@@ -389,8 +391,18 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     }
 
     private fun translateAndSpeak(text: String) {
-        if (text.contains("Rupee")) {
-            tts?.speak("Detected ${text.replace("Rupee", "Rupees")}", TextToSpeech.QUEUE_FLUSH, null, null)
+        val lowerText = text.lowercase()
+        if (lowerText.contains("rupee")) {
+            var speechText = text
+            when {
+                lowerText.contains("ten") -> speechText = "10 Rupees"
+                lowerText.contains("twenty") -> speechText = "20 Rupees"
+                lowerText.contains("fifty") -> speechText = "50 Rupees"
+                lowerText.contains("one hundred") -> speechText = "100 Rupees"
+                lowerText.contains("two hundred") -> speechText = "200 Rupees"
+                lowerText.contains("five hundred") -> speechText = "500 Rupees"
+            }
+            tts?.speak("Detected $speechText", TextToSpeech.QUEUE_FLUSH, null, null)
             return
         }
         if (selectedLangCode == TranslateLanguage.ENGLISH || isDownloadingModel) {
@@ -405,14 +417,18 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     }
 
     private fun processImageProxy(imageProxy: ImageProxy) {
-        val currentInterpreter = interpreter ?: run { imageProxy.close(); return }
         if (!isDetectionActive) { imageProxy.close(); return }
+
+        if (currentMode == AppMode.CURRENCY_DETECTION && currencyInterpreter != null) {
+            processCurrencyProxy(imageProxy)
+            return
+        }
+
+        val currentInterpreter = interpreter ?: run { imageProxy.close(); return }
 
         imageProxy.use { proxy ->
             try {
                 val bitmap = proxy.toBitmap()
-                if (bitmap == null) { proxy.close(); return }
-
                 val rotationDegrees = proxy.imageInfo.rotationDegrees
 
                 val imageProcessor = ImageProcessor.Builder()
@@ -485,6 +501,52 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         }
     }
 
+    private fun processCurrencyProxy(imageProxy: ImageProxy) {
+        val currInterpreter = currencyInterpreter ?: run { imageProxy.close(); return }
+        imageProxy.use { proxy ->
+            try {
+                val bitmap = proxy.toBitmap()
+                val rotationDegrees = proxy.imageInfo.rotationDegrees
+                val imageProcessor = ImageProcessor.Builder()
+                    .add(Rot90Op(-rotationDegrees / 90))
+                    .add(ResizeOp(224, 224, ResizeOp.ResizeMethod.BILINEAR))
+                    .add(NormalizeOp(127.5f, 127.5f))
+                    .build()
+
+                val tensorImage = TensorImage(DataType.FLOAT32).also { it.load(bitmap) }
+                val processedImage = imageProcessor.process(tensorImage)
+
+                val output = Array(1) { FloatArray(currencyLabels.size) }
+                currInterpreter.run(processedImage.buffer, output)
+
+                var maxIdx = -1
+                var maxScore = 0f
+                for (i in output[0].indices) {
+                    if (output[0][i] > maxScore) {
+                        maxScore = output[0][i]
+                        maxIdx = i
+                    }
+                }
+
+                if (maxIdx != -1 && maxScore > 0.8f) {
+                    val label = currencyLabels[maxIdx]
+                    if (label.lowercase() != "background") {
+                        val result = DetectionResult(label, maxScore, RectF(0.1f, 0.1f, 0.9f, 0.9f))
+                        lifecycleScope.launch(Dispatchers.Main) {
+                            detectionsState = listOf(result)
+                            if (System.currentTimeMillis() - lastSpokenTime > speechInterval) {
+                                translateAndSpeak(label)
+                                lastSpokenTime = System.currentTimeMillis()
+                            }
+                        }
+                        return
+                    }
+                }
+                lifecycleScope.launch(Dispatchers.Main) { detectionsState = emptyList() }
+            } catch (e: Exception) { Log.e("DETECTOR", "Currency error: ${e.message}") }
+        }
+    }
+
     private fun updateProximityAndVibration(results: List<DetectionResult>) {
         if (results.isEmpty()) { alertLevel = 0; return }
 
@@ -530,14 +592,27 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private fun setupInterpreter() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
+                // Load Object Detection Model
                 val model = FileUtil.loadMappedFile(this@MainActivity, "yolo11n_int8.tflite")
                 interpreter = Interpreter(model, Interpreter.Options().setNumThreads(4))
                 labels = loadLabels()
-                Log.d("DETECTOR", "Model loaded successfully")
-                speakFeedback("Object detector ready")
+
+                // Load Currency Detection Model
+                val currencyModel = FileUtil.loadMappedFile(this@MainActivity, "model_unquant.tflite")
+                currencyInterpreter = Interpreter(currencyModel, Interpreter.Options().setNumThreads(4))
+                currencyLabels = try {
+                    assets.open("labels.txt").bufferedReader().useLines { lines ->
+                        lines.map { it.substringAfter(" ").trim() }.toList()
+                    }
+                } catch (e: Exception) {
+                    listOf("Background", "ten rupee notes", "twenty rupee notes", "fifty rupee notes", "one hundred rupees", "two hundred rupees", "five hundred rupees")
+                }
+
+                Log.d("DETECTOR", "Models loaded successfully")
+                speakFeedback("Systems ready")
             } catch (e: Exception) {
-                Log.e("DETECTOR", "Model missing: ${e.message}")
-                speakFeedback("Failed to load detector")
+                Log.e("DETECTOR", "Model loading error: ${e.message}")
+                speakFeedback("Error loading models")
             }
         }
     }
@@ -736,13 +811,4 @@ private fun checkAndEnableGPS(context: Context) {
             try { e.startResolutionForResult(context as android.app.Activity, 1001) } catch (err: Exception) { }
         }
     }
-}
-
-fun ImageProxy.toBitmap(): android.graphics.Bitmap? {
-    return try {
-        val buffer = planes[0].buffer
-        val bytes = ByteArray(buffer.remaining())
-        buffer.get(bytes)
-        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-    } catch (e: Exception) { null }
 }
