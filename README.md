@@ -1,70 +1,103 @@
-BlindNav: AI-Powered Navigation for the Visually Impaired (PS-145)
-BlindNav is an innovative Android-based "Artificial Eye" designed to empower visually impaired individuals. By leveraging Edge-AI, the application provides real-time environment scanning, currency identification, and emergency safety features through multi-modal feedback (Voice + Haptics).
+BlindNav is an innovative Android-based "Artificial Eye" designed to empower visually impaired individuals. By leveraging Edge-AI and a hybrid connectivity model, the application provides real-time environment scanning, currency identification, and emergency safety features through multi-modal feedback.
 
-** Key Features**
-Real-Time Object Detection: Identifies obstacles like chairs, people, and vehicles using a quantized YOLO model for low-latency performance.
+**Key Features**
+Real-Time Object Detection: Identifies 80+ categories like chairs, people, and vehicles using an optimized YOLO11n TFLite model for low-latency performance.
 
-Currency Identification: Specialized mode for recognizing Indian Currency notes to foster financial independence.
+Currency Identification: Specialized mode for recognizing Indian Currency notes (₹10 to ₹500) to foster financial independence.
 
-Emergency SOS: Instant GPS location sharing via SMS to trusted guardians through voice commands or hardware triggers.
+Dynamic Variable Haptics: Unlike static alerts, the vibration intensity and frequency scale proportionally based on object proximity, providing a tactile "sense of distance."
 
-Multi-Language Support: Translates visual data into regional languages (Telugu, Hindi, etc.) using Google ML Kit.
+Multilingual Voice Interface: Provides auditory feedback in English, Telugu, and Hindi using Google ML Kit to bridge the linguistic divide.
 
-**Intelligent Interaction**
+Offline-Resilient SOS: A critical safety feature that works without internet. Users can trigger an instant GPS-linked SMS to trusted guardians via hardware button gestures.
 
-Auto-Flashlight: Automatically activates in low-light environments to maintain AI accuracy.
+*Technology Stack*
+Frontend: Kotlin / Jetpack Compose (Modern & Responsive UI)
 
-Haptic Proximity: Vibrational alerts that intensify as objects get closer to the user.
+AI Engine: TensorFlow Lite (TFLite) with INT8 Quantization
 
-** Technology Stack**
-Frontend: Android (Kotlin / Jetpack Compose)
-
-AI Engine: TensorFlow Lite (TFLite)
-
-Computer Vision: CameraX API
+Computer Vision: CameraX API for real-time frame analysis
 
 Language Services: Google ML Kit (Translation & Text-to-Speech)
 
-Location: Google Fused Location Provider API
+Connectivity: Hybrid (Online for AI Inference, 100% Offline for Emergency SOS)
 
-** Project Architecture**
-The app follows a modular architecture for high performance:
+*Project Architecture*
+The app follows a modular architecture to ensure performance and reliability:
 
-Image Analysis Layer: Captures frames via CameraX and preprocesses them for the AI model.
+Vision Pipeline: Captures and preprocesses frames via CameraX.
 
-Inference Layer: Processes frames through a quantized YOLO11 model to detect objects and currency.
+Inference Layer: Processes frames locally/cloud via YOLO models to detect objects/currency.
 
-Feedback Layer: Converts detections into voice output (TTS) and haptic vibrations.
+Proximity Engine: Calculates bounding box scale to trigger Variable Haptic Intensity.
 
-Safety Layer: Monitors triggers for SOS alerts and captures real-time GPS coordinates.
+Safety Layer: Monitors hardware triggers for Offline SMS telemetry.
 
-** The Team **
+*The Team*
 Hansitha: Core AI & TFLite Model Optimization
+
+Supriya: Audio Interface, TTS Integration & Logic Refinement
 
 Madhu Sree: CameraX Integration & Frame Processing
 
-Lasya: Logic Development (SOS & Haptics)
+Kavya: Documentation Lead & Emergency SOS
 
-Supriya: Audio Interface & TTS Integration
+Lasya:BlindNav is an innovative Android-based "Artificial Eye" designed to empower visually impaired individuals. By leveraging Edge-AI and a hybrid connectivity model, the application provides real-time environment scanning, currency identification, and emergency safety features through multi-modal feedback.
 
-Kavya: UI/UX Design & Documentation Lead
+**Key Features**
+Real-Time Object Detection: Identifies 80+ categories like chairs, people, and vehicles using an optimized YOLO11n TFLite model for low-latency performance.
 
-** Installation & Setup **
-Clone the Repo:
+Currency Identification: Specialized mode for recognizing Indian Currency notes (₹10 to ₹500) to foster financial independence.
 
-Bash
-git clone https://github.com/yourusername/BlindNav.git
-Open in Android Studio: Ensure you have the latest version of Ladybug or higher.
+Dynamic Variable Haptics: Unlike static alerts, the vibration intensity and frequency scale proportionally based on object proximity, providing a tactile "sense of distance."
 
-Dependencies: Sync Gradle to download TensorFlow Lite, ML Kit, and CameraX libraries.
+Multilingual Voice Interface: Provides auditory feedback in English, Telugu, and Hindi using Google ML Kit to bridge the linguistic divide.
 
-Permissions: Grant Camera, Location, and SMS permissions on the first run.
+Offline-Resilient SOS: A critical safety feature that works without internet. Users can trigger an instant GPS-linked SMS to trusted guardians via hardware button gestures.
 
-Run: Deploy on an Android device (API 24 or higher).
+*Technology Stack*
+Frontend: Kotlin / Jetpack Compose (Modern & Responsive UI)
 
-** Future Roadmap **
-Integration with wearable Smart Glasses.
+AI Engine: TensorFlow Lite (TFLite) with INT8 Quantization
 
-Offline regional language support.
+Computer Vision: CameraX API for real-time frame analysis
 
-Indoor floor-mapping for malls and university campuses.
+Language Services: Google ML Kit (Translation & Text-to-Speech)
+
+Connectivity: Hybrid (Online for AI Inference, 100% Offline for Emergency SOS)
+
+*Project Architecture*
+The app follows a modular architecture to ensure performance and reliability:
+
+Vision Pipeline: Captures and preprocesses frames via CameraX.
+
+Inference Layer: Processes frames locally/cloud via YOLO models to detect objects/currency.
+
+Proximity Engine: Calculates bounding box scale to trigger Variable Haptic Intensity.
+
+Safety Layer: Monitors hardware triggers for Offline SMS telemetry.
+
+*The Team*
+Hansitha: Core AI & TFLite Model Optimization
+
+Supriya: Audio Interface, TTS Integration & Logic Refinement
+
+Madhu Sree: CameraX Integration & Frame Processing
+
+Kavya: UI/UX Design & Documentation & Emergency SOS
+
+Lasya: Haptic Feedback Integration
+
+ Future Roadmap
+On-Device OCR: Integrated content reader for books and signboards.
+
+Indoor Mapping: Floor-mapping for malls and university campuses.
+
+Wearable Integration: Support for smart-glass hardware. Haptic Feedback Integration
+
+ Future Roadmap
+On-Device OCR: Integrated content reader for books and signboards.
+
+Indoor Mapping: Floor-mapping for malls and university campuses.
+
+Wearable Integration: Support for smart-glass hardware.
