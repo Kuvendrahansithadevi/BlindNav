@@ -95,7 +95,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private var isEnvironmentDark by mutableStateOf(false)
     private var isDetectionActive by mutableStateOf(false)
     private var currentMode by mutableStateOf(AppMode.OBJECT_DETECTION)
-
+    //
     // Voice & Vibration
     private var speechRecognizer: SpeechRecognizer? = null
     private lateinit var speechIntent: Intent
