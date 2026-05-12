@@ -1,4 +1,4 @@
-package com.yourpackage.name.future_scope
+package com.example.ainavigationforblindpeople
 
 /**
  * Base interface to ensure all future roadmap modules 
