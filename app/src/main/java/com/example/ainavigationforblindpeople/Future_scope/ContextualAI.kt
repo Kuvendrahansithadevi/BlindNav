@@ -1,4 +1,4 @@
-package com.yourpackage.name.future_scope
+package com.example.ainavigationforblindpeople
 
 /**
  * FUTURE SCOPE: Local LLM / VQA (Visual Question Answering).
