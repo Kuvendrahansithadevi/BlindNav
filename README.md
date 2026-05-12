@@ -42,7 +42,7 @@ Madhu Sree: CameraX Integration & Frame Processing
 
 Kavya: Documentation Lead & Emergency SOS
 
-Lasya:BlindNav is an innovative Android-based "Artificial Eye" designed to empower visually impaired individuals. By leveraging Edge-AI and a hybrid connectivity model, the application provides real-time environment scanning, currency identification, and emergency safety features through multi-modal feedback.
+Lasya: Haptic Feedback Integration
 
 **Key Features**
 Real-Time Object Detection: Identifies 80+ categories like chairs, people, and vehicles using an optimized YOLO11n TFLite model for low-latency performance.
@@ -94,10 +94,3 @@ On-Device OCR: Integrated content reader for books and signboards.
 Indoor Mapping: Floor-mapping for malls and university campuses.
 
 Wearable Integration: Support for smart-glass hardware. Haptic Feedback Integration
-
- Future Roadmap
-On-Device OCR: Integrated content reader for books and signboards.
-
-Indoor Mapping: Floor-mapping for malls and university campuses.
-
-Wearable Integration: Support for smart-glass hardware.
