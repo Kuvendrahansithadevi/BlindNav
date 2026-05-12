@@ -72,7 +72,7 @@ class CurrencyRepository(private val context: Context) {
             val imageProcessor = ImageProcessor.Builder()
                 .add(Rot90Op(-rotationDegrees / 90))
                 .add(ResizeOp(224, 224, ResizeOp.ResizeMethod.BILINEAR))
-                .add(NormalizeOp(0f, 255f))
+                .add(NormalizeOp(127.5f, 127.5f))
                 .build()
 
             // Convert to TensorImage
