@@ -1,4 +1,4 @@
-package com.yourpackage.name.future_scope
+package com.example.ainavigationforblindpeople
 
 /**
  * FUTURE SCOPE: This module is intended to handle OCR (Optical Character Recognition)
