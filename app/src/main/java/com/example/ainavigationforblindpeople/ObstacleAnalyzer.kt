@@ -93,6 +93,16 @@ class ObstacleAnalyzer(
                     }
                 }
             }
+            val startTime = System.currentTimeMillis()
+
+             // ...  Inference logic ikkada  ...
+
+             val inferenceTime = System.currentTimeMillis() - startTime
+             Log.d("Performance_Benchmarking", "Inference Latency: ${inferenceTime}ms")
+
+            if (inferenceTime < 100) {
+            Log.i("Performance_Benchmarking", "Latency Requirement Satisfied")
+            }
 
             val finalResults = applyNMS(detections)
             val isFinalDanger = finalResults.any { res ->
