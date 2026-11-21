@@ -49,8 +49,9 @@
             android:value="@integer/google_play_services_version" />
         
        
+        <!-- Future Enhancements: On-Device Content Reader -->
         <meta-data
-            android:name="com.google.mlkit.vision.DEPENDENCIES"               //Future Enhancements:On-Device Content Reader
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
             android:value="ocr" />
 
     </application>
